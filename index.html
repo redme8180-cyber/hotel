@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion de Réservation</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#25d366">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3565/3565099.png">
+
+    <style>
+        :root {
+            --primary: #25d366; /* Vert WhatsApp */
+            --dark: #2c3e50;
+            --light: #f4f7f6;
+            --danger: #e74c3c;
+            --white: #ffffff;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--light); 
+            margin: 0; 
+            padding: 20px; 
+            color: var(--dark);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #source-badge { 
+            font-size: 0.75rem; 
+            background: var(--dark); 
+            color: white; 
+            padding: 6px 15px; 
+            border-radius: 20px; 
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* Grille de chambres */
+        #room-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Style des Cartes */
+        .room-card {
+            background: var(--white); 
+            border-radius: 15px; 
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            border: 1px solid #eee;
+        }
+        
+        .room-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .room-number { font-size: 1.5rem; font-weight: 800; color: var(--dark); }
+        .price { font-size: 1.2rem; color: var(--primary); font-weight: bold; margin: 12px 0; }
+        
+        .status-badge {
+            padding: 5px 12px; 
+            border-radius: 50px; 
+            font-size: 0.85rem; 
+            font-weight: bold;
+            display: inline-block; 
+            margin-bottom: 20px;
+        }
+        .status-libre { background: #e8f5e9; color: #2e7d32; }
+        .status-occupe { background: #ffebee; color: #c62828; }
+
+        .btn-book {
+            display: block; 
+            width: 100%; 
+            padding: 14px; 
+            border: none; 
+            border-radius: 10px;
+            background: var(--primary); 
+            color: white; 
+            font-weight: bold;
+            font-size: 1rem;
+            text-align: center; 
+            cursor: pointer; 
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .btn-book:active { transform: scale(0.98); }
+        .btn-disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Modal / Formulaire */
+        #res-form-overlay {
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+
+        #res-form-container {
+            position: fixed; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%);
+            background: var(--white); 
+            padding: 25px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000; 
+            width: 90%; 
+            max-width: 400px;
+        }
+
+        h2 { margin-top: 0; color: var(--dark); }
+        label { display: block; margin-top: 15px; font-size: 0.9rem; font-weight: bold; }
+        
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        #prix-total { 
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold; 
+            margin: 20px 0; 
+            color: var(--dark);
+            border: 1px dashed #ccc;
+        }
+
+        .btn-close {
+            background: none; border: none; color: #999; 
+            cursor: pointer; width: 100%; margin-top: 10px; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Réservez votre Chambre</h1>
+        <div id="source-badge">CONNEXION EN COURS...</div>
+    </header>
+
+    <div id="room-grid">
+        </div>
+
+    <div id="res-form-overlay" onclick="fermerForm()"></div>
+    <div id="res-form-container" style="display: none;">
+        <h2 id="res-title">Chambre</h2>
+        
+        <label>Nom du client</label>
+        <input type="text" id="client-name" placeholder="Ex: Ahmed Benani">
+        
+        <label>Date d'arrivée</label>
+        <input type="date" id="date-arrivee" onchange="calculerTotal()">
+        
+        <label>Date de départ</label>
+        <input type="date" id="date-depart" onchange="calculerTotal()">
+        
+        <div id="prix-total">Choisissez vos dates</div>
+        
+        <button class="btn-book" onclick="validerReservation()">Confirmer via WhatsApp 💬</button>
+        <button class="btn-close" onclick="fermerForm()">Annuler</button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const WHATSAPP_NUM = "212661731123"; 
+        const GOOGLE_CSV_URL = "TON_LIEN_GOOGLE_SHEETS_CSV"; // À remplacer par ton URL
+        const GITHUB_CSV_URL = "https://raw.githubusercontent.com/redme8180-cyber/cyber/refs/heads/main/fichier01.csv"; 
+
+        let chambres = []; 
+        let selectedRoom = null;
+
+        // 1. CHARGEMENT DES DONNÉES (Logique du Script 2)
+        async function chargerDonnees() { 
+            try { 
+                const response = await fetch(GOOGLE_CSV_URL); 
+                if (!response.ok) throw new Error();
+                const data = await response.text(); 
+                document.getElementById('source-badge').innerText = "🟢 SOURCE: GOOGLE SHEETS";
+                traiterDonnees(data);
+            } catch (e) { 
+                try {
+                    const response = await fetch(GITHUB_CSV_URL);
+                    if (!response.ok) throw new Error();
+                    const data = await response.text();
+                    document.getElementById('source-badge').innerText = "🟠 SOURCE: GITHUB (BACKUP)";
+                    traiterDonnees(data);
+                } catch (err) {
+                    document.getElementById('room-grid').innerHTML = "<p>Erreur de connexion aux données.</p>";
+                }
+            } 
+        } 
+
+        function traiterDonnees(csv) {
+            const lignes = csv.split('\n').slice(1); 
+            chambres = lignes.filter(l => l.trim() !== "").map(l => { 
+                const c = l.split(','); 
+                return { 
+                    id: c[0].trim(), 
+                    prix: parseFloat(c[1]), 
+                    etat: c[2].trim().toLowerCase() 
+                }; 
+            }); 
+            render(); 
+        }
+
+        // 2. AFFICHAGE (Design du Script 1)
+        function render() { 
+            const grid = document.getElementById('room-grid'); 
+            grid.innerHTML = ""; 
+            
+            chambres.forEach(c => { 
+                const isOccupied = c.etat === 'occupe' || c.etat === 'occupé'; 
+                const card = document.createElement('div'); 
+                card.className = 'room-card'; 
+                
+                card.innerHTML = `
+                    <div class="room-number">Chambre #${c.id}</div>
+                    <div class="price">${c.prix} DH <span style="font-weight:normal; font-size:0.8rem">/ nuit</span></div>
+                    <div class="status-badge ${isOccupied ? 'status-occupe' : 'status-libre'}">
+                        ${isOccupied ? '🔴 Occupée' : '🟢 Disponible'}
+                    </div>
+                    <button class="btn-book ${isOccupied ? 'btn-disabled' : ''}" 
+                            ${isOccupied ? 'disabled' : ''}>
+                        ${isOccupied ? 'Indisponible' : 'Réserver maintenant'}
+                    </button>
+                `; 
+                
+                if(!isOccupied) {
+                    card.querySelector('.btn-book').onclick = () => ouvrirForm(c);
+                }
+                grid.appendChild(card); 
+            }); 
+        } 
+
+        // 3. LOGIQUE RÉSERVATION & CALENDRIER
+        function ouvrirForm(room) {
+            selectedRoom = room;
+            document.getElementById('res-form-overlay').style.display = 'block';
+            document.getElementById('res-form-container').style.display = 'block';
+            document.getElementById('res-title').innerText = "Réservation #" + room.id;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const arriveeInput = document.getElementById('date-arrivee');
+            const departInput = document.getElementById('date-depart');
+            
+            arriveeInput.value = today;
+            arriveeInput.min = today;
+            departInput.min = today;
+            document.getElementById('prix-total').innerText = "Choisissez vos dates";
+        }
+
+        function fermerForm() {
+            document.getElementById('res-form-overlay').style.display = 'none';
+            document.getElementById('res-form-container').style.display = 'none';
+        }
+
+        function calculerTotal() {
+            const d1 = new Date(document.getElementById('date-arrivee').value);
+            const d2 = new Date(document.getElementById('date-depart').value);
+            const display = document.getElementById('prix-total');
+
+            if (d1 && d2 && d2 > d1) {
+                const diffDays = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)); 
+                const total = diffDays * selectedRoom.prix;
+                display.innerText = `${diffDays} nuit(s) = ${total} DH`;
+                return { days: diffDays, total: total };
+            }
+            display.innerText = "Dates invalides (min. 1 nuit)";
+            return null;
+        }
+
+        function validerReservation() { 
+            const info = calculerTotal();
+            const nom = document.getElementById('client-name').value;
+            
+            if(!nom || !info) return alert("Veuillez entrer votre nom et des dates valides.");
+            
+            const msg = `*RÉSERVATION CHAMBRE #${selectedRoom.id}*\n--------------------------\n👤 *Client:* ${nom}\n📅 *Durée:* ${info.days} nuit(s)\n💰 *Total à payer:* ${info.total} DH\n--------------------------\n_Envoyé depuis l'application_`;
+            
+            window.open(`https://wa.me/${WHATSAPP_NUM}?text=${encodeURIComponent(msg)}`); 
+            fermerForm();
+        } 
+
+        // Initialisation
+        chargerDonnees(); 
+        setInterval(chargerDonnees, 60000);
+
+        // 4. ENREGISTREMENT SERVICE WORKER (PWA)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA: Service Worker actif !'))
+                    .catch(err => console.error('PWA: Erreur SW', err));
+            });
+        }
+    </script>
+</body>
+</html>
